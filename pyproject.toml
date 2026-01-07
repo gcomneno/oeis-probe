@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "oeis-probe"
-version = "0.1.0"
+version = "0.1.2"
 description = "OEIS sequence fingerprinting: online JSON search + optional offline stripped/names + SQLite cache (GiadaWare)."
 readme = "README.md"
 requires-python = ">=3.10"
