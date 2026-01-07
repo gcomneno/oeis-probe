@@ -1,4 +1,5 @@
-# oeis-probe (GiadaWare)
+# OEIS-probe
+Tool CLI Python per riconoscere sequenze di interi archiviate su OEIS, con ricerca offline su stripped/names e cache SQLite. Ideale come “oracolo esterno” da laboratorio per validare le sequenze generate da algoritmi, regressioni, e riconoscimento rapido di pattern noti.
 
 **Sequence fingerprinting** contro OEIS:
 - online via `&fmt=json` (JSON API)
