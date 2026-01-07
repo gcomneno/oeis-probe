@@ -21,9 +21,7 @@ def test_best_subsequence_match():
 
 
 def test_hits_from_online_json_accepts_list_payload():
-    payload = [
-        {"number": 45, "data": "0,1,1,2,3,5,8,13,21,34,55,89", "name": "Fibonacci numbers"}
-    ]
+    payload = [{"number": 45, "data": "0,1,1,2,3,5,8,13,21,34,55,89", "name": "Fibonacci numbers"}]
     hits = hits_from_online_json([0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89], payload, max_hits=3)
     assert hits
     assert hits[0].a_number == "A000045"

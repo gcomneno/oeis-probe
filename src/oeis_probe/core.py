@@ -8,10 +8,10 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, List, Optional, Sequence, Tuple
 
 DEFAULT_OEIS_BASE = "https://oeis.org"
 DEFAULT_CACHE_TTL_DAYS = 30
@@ -47,17 +47,17 @@ def now_epoch() -> int:
     return int(time.time())
 
 
-def parse_terms(s: str) -> List[int]:
+def parse_terms(s: str) -> list[int]:
     """
     Parse "1,2,3" or "1 2 3" or "1, 2, 3" into [1,2,3].
     """
     raw = s.strip()
     if not raw:
         raise ValueError("empty terms string")
-    parts: List[str] = []
+    parts: list[str] = []
     for chunk in raw.replace(",", " ").split():
         parts.append(chunk)
-    terms: List[int] = []
+    terms: list[int] = []
     for p in parts:
         try:
             terms.append(int(p))
@@ -66,7 +66,7 @@ def parse_terms(s: str) -> List[int]:
     return terms
 
 
-def terms_to_query_string(terms: Sequence[int], max_terms: Optional[int] = None) -> str:
+def terms_to_query_string(terms: Sequence[int], max_terms: int | None = None) -> str:
     if max_terms is not None:
         terms = terms[:max_terms]
     return ",".join(str(x) for x in terms)
@@ -92,9 +92,9 @@ class OeisHit:
     a_number: str
     name: str
     offset: str
-    data_terms: List[int]
+    data_terms: list[int]
     match_len: int
-    match_at: Optional[int]  # index inside data_terms where input aligns (best)
+    match_at: int | None  # index inside data_terms where input aligns (best)
     score: float  # 0..1
 
 
@@ -117,7 +117,7 @@ class OeisCache:
             )
             con.commit()
 
-    def get(self, key: str, ttl_days: int) -> Optional[str]:
+    def get(self, key: str, ttl_days: int) -> str | None:
         cutoff = now_epoch() - ttl_days * 86400
         with sqlite3.connect(self.db_path) as con:
             row = con.execute(
@@ -157,7 +157,7 @@ def oeis_search_online(
     oeis_base: str = DEFAULT_OEIS_BASE,
     max_query_terms: int = 40,
     timeout: float = 10.0,
-    cache: Optional[OeisCache] = None,
+    cache: OeisCache | None = None,
     cache_ttl_days: int = DEFAULT_CACHE_TTL_DAYS,
 ) -> object:
     q_terms = terms_to_query_string(terms, max_terms=max_query_terms)
@@ -179,7 +179,7 @@ def oeis_fetch_by_id_online(
     *,
     oeis_base: str = DEFAULT_OEIS_BASE,
     timeout: float = 10.0,
-    cache: Optional[OeisCache] = None,
+    cache: OeisCache | None = None,
     cache_ttl_days: int = DEFAULT_CACHE_TTL_DAYS,
 ) -> object:
     a_number = a_number.upper().strip()
@@ -198,7 +198,7 @@ def oeis_fetch_by_id_online(
     return payload
 
 
-def parse_oeis_data_terms(data_field: str, max_terms: int = 200) -> List[int]:
+def parse_oeis_data_terms(data_field: str, max_terms: int = 200) -> list[int]:
     """
     OEIS JSON 'data' is a comma-separated string of integers.
     """
@@ -206,7 +206,7 @@ def parse_oeis_data_terms(data_field: str, max_terms: int = 200) -> List[int]:
     if not s:
         return []
     items = [x.strip() for x in s.split(",")]
-    out: List[int] = []
+    out: list[int] = []
     for it in items:
         if not it:
             continue
@@ -219,7 +219,7 @@ def parse_oeis_data_terms(data_field: str, max_terms: int = 200) -> List[int]:
     return out
 
 
-def best_subsequence_match(hay: Sequence[int], needle: Sequence[int]) -> Tuple[int, Optional[int]]:
+def best_subsequence_match(hay: Sequence[int], needle: Sequence[int]) -> tuple[int, int | None]:
     """
     Find best consecutive match length of needle inside hay.
     Returns (match_len, match_at_index_in_hay).
@@ -227,7 +227,7 @@ def best_subsequence_match(hay: Sequence[int], needle: Sequence[int]) -> Tuple[i
     if not needle or not hay:
         return 0, None
     best_len = 0
-    best_at: Optional[int] = None
+    best_at: int | None = None
     n = len(needle)
     for start in range(len(hay)):
         if len(hay) - start <= best_len:
@@ -262,10 +262,12 @@ def _oeis_results_from_payload(payload: object) -> list:
     return []
 
 
-def hits_from_online_json(terms: Sequence[int], payload: object, max_hits: int = 10) -> List[OeisHit]:
+def hits_from_online_json(
+    terms: Sequence[int], payload: object, max_hits: int = 10
+) -> list[OeisHit]:
     results = _oeis_results_from_payload(payload)
     needle = list(terms)
-    hits: List[OeisHit] = []
+    hits: list[OeisHit] = []
 
     for r in results[: max_hits * 3]:
         if not isinstance(r, dict):
@@ -300,7 +302,7 @@ def hits_from_online_json(terms: Sequence[int], payload: object, max_hits: int =
     return sort_hits(hits, rank="strict")[:max_hits]
 
 
-def load_names_map(names_path: Path, limit: Optional[int] = None) -> dict:
+def load_names_map(names_path: Path, limit: int | None = None) -> dict:
     """
     Load names.gz or names into {Axxxxxx: name}.
     """
@@ -323,7 +325,7 @@ def load_names_map(names_path: Path, limit: Optional[int] = None) -> dict:
     return names
 
 
-def iter_stripped_lines(stripped_path: Path) -> Iterator[Tuple[str, str]]:
+def iter_stripped_lines(stripped_path: Path) -> Iterator[tuple[str, str]]:
     """
     Yield (Axxxxxx, normalized_terms_string) for each line in stripped/stripped.gz.
     Normalized terms string keeps commas and digits, removes spaces.
@@ -351,10 +353,10 @@ def oeis_search_offline_stripped(
     terms: Sequence[int],
     stripped_path: Path,
     *,
-    names_path: Optional[Path] = None,
+    names_path: Path | None = None,
     max_hits: int = 10,
-    max_scan: Optional[int] = None,
-) -> List[OeisHit]:
+    max_scan: int | None = None,
+) -> list[OeisHit]:
     """
     Offline subsequence search on stripped/stripped.gz.
     Fast substring matching: looks for ',t1,t2,...,tk,' inside each sequence line.
@@ -367,12 +369,12 @@ def oeis_search_offline_stripped(
         except Exception as ex:
             eprint(f"[warn] couldn't load names file: {ex}")
 
-    hits: List[OeisHit] = []
+    hits: list[OeisHit] = []
     scanned = 0
     for aid, rest in iter_stripped_lines(stripped_path):
         scanned += 1
         if needle in rest:
-            data_terms: List[int] = []
+            data_terms: list[int] = []
             for tok in rest.split(","):
                 if not tok:
                     continue
@@ -404,7 +406,9 @@ def oeis_search_offline_stripped(
     return sort_hits(hits, rank="strict")[:max_hits]
 
 
-def pretty_print_hits(terms: Sequence[int], hits: Sequence[OeisHit], *, show_terms: Optional[int] = None) -> None:
+def pretty_print_hits(
+    terms: Sequence[int], hits: Sequence[OeisHit], *, show_terms: int | None = None
+) -> None:
     """
     Pretty print hits. By default, prints ALL query terms (no truncation).
     """
@@ -446,7 +450,7 @@ def hits_to_jsonable(hits: Sequence[OeisHit], *, include_data_prefix: int = 30) 
     return out
 
 
-def _early_score(match_at: Optional[int]) -> float:
+def _early_score(match_at: int | None) -> float:
     """
     Bigger is better. match_at=0 -> 1.0, match_at=1 -> 0.5, ...
     None -> 0.0 (worst).
@@ -456,7 +460,7 @@ def _early_score(match_at: Optional[int]) -> float:
     return 1.0 / (1.0 + float(match_at))
 
 
-def sort_hits(hits: Sequence[OeisHit], rank: str = "strict") -> List[OeisHit]:
+def sort_hits(hits: Sequence[OeisHit], rank: str = "strict") -> list[OeisHit]:
     """
     Sort hits with different tie-break strategies.
 

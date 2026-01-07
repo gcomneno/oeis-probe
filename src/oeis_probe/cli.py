@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Optional, Sequence, Tuple
 
 from .core import (
     DEFAULT_CACHE_TTL_DAYS,
@@ -32,7 +32,7 @@ def _online_probe_with_optional_relax(
     max_hits: int,
     relax_online: bool,
     relax_min_terms: int,
-) -> Tuple[list, Optional[str]]:
+) -> tuple[list, str | None]:
     """
     Run online probe. If relax_online=True and OEIS returns no results, retry by shortening
     the query prefix (drop terms from the end) down to relax_min_terms.
@@ -86,12 +86,12 @@ def _print_explain_top(terms: Sequence[int], hits: Sequence) -> None:
     exp = d.get("expected")
     # show 0-based and 1-based to avoid confusion
     print(
-        f"[explain] top {a}: first mismatch at query[{qi}] (#{qi+1}) -> got {got}; "
+        f"[explain] top {a}: first mismatch at query[{qi}] (#{qi + 1}) -> got {got}; "
         f"expected {exp} (hit data index {hi})"
     )
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="oeis-probe",
         description="Probe integer sequences against OEIS (online JSON + optional offline stripped/names).",
@@ -100,7 +100,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     p_probe = sub.add_parser("probe", help="probe by terms (default)")
     p_probe.add_argument("terms", nargs="?", help='terms like "1,2,3,6,11,23"')
-    p_probe.add_argument("--terms-file", type=Path, help="read terms from a text file (comma/space-separated)")
+    p_probe.add_argument(
+        "--terms-file", type=Path, help="read terms from a text file (comma/space-separated)"
+    )
     p_probe.add_argument("--max-hits", type=int, default=10)
     p_probe.add_argument("--max-query-terms", type=int, default=40)
     p_probe.add_argument("--timeout", type=float, default=10.0)
@@ -127,7 +129,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     )
     p_probe.add_argument("--offline-stripped", type=Path, help="path to stripped or stripped.gz")
     p_probe.add_argument("--offline-names", type=Path, help="path to names or names.gz (optional)")
-    p_probe.add_argument("--offline-max-scan", type=int, default=None, help="stop offline scan after N lines (debug)")
+    p_probe.add_argument(
+        "--offline-max-scan", type=int, default=None, help="stop offline scan after N lines (debug)"
+    )
 
     p_probe.add_argument(
         "--min-match-len",
@@ -142,7 +146,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         help="Explain where the query first diverges from the top hit (best consecutive match).",
     )
 
-    p_probe.add_argument("--json-out", type=Path, help="write JSON result to file (also prints summary)")
+    p_probe.add_argument(
+        "--json-out", type=Path, help="write JSON result to file (also prints summary)"
+    )
     p_probe.add_argument(
         "--rank",
         choices=["strict", "prefer-early"],
